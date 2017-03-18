@@ -7,6 +7,7 @@ class ScheduledTask
   attr_accessor :due_at
   @@count = 0
   def initialize(assignment_id, deadline_type, due_at)
+    @assignment = Assignment.find(assignment_id)
     self.assignment_id = assignment_id
     self.deadline_type = deadline_type
     self.due_at = due_at
@@ -18,8 +19,7 @@ class ScheduledTask
       if (self.deadline_type == "metareview")
         mail_metareviewers
         if assignment.team_assignment?
-          teamMails = getTeamMembersMail
-          email_reminder(teamMails, "teammate review")
+          email_reminder(getTeamMembersMail, "teammate review")
         end
       end
 
@@ -106,12 +106,8 @@ class ScheduledTask
 
   def getTeamMembersMail
     teamMembersMailList = []
-    assignment = Assignment.find(self.assignment_id)
-    teams = Team.where(['parent_id = ?', self.assignment_id])
-    for team in teams
-      team_participants = TeamsUser.where(['team_id = ?', team.id])
-      for team_participant in team_participants
-        user = User.find(team_participant.user_id)
+    @assignment.teams.each do |team|
+      team.users.each do |user|
         teamMembersMailList << user.email
       end
     end
@@ -183,7 +179,6 @@ class ScheduledTask
     Rails.logger.info "Count:" + @@count.to_s
 
     if @@count % 3 == 0
-      assignment = Assignment.find(self.assignment_id)
 
       if (assignment.instructor.copy_of_emails)
         emails << assignment.instructor.email
